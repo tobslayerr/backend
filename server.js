@@ -28,3 +28,6 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/event", eventRoutes);
 
 app.listen(port, ()=> console.log(`Server running on port ${port}`))
+
+export default app;
+
