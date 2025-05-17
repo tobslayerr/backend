@@ -129,15 +129,21 @@ export const logout = async (req, res)=> {
     }
 }
 
+
 export const sendVerifyOtp = async (req, res) => {
-  const userId = req.user?._id;
+  const userId = req.user?.id; // ✅ id, bukan _id karena dari middleware
 
   if (!userId) {
     return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
   try {
-    const user = req.user; 
+    // Ambil user lengkap dari database
+    const user = await userModel.findById(userId);
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
 
     if (user.isAccountVerified) {
       return res.status(400).json({ success: false, message: "Account already verified" });
@@ -156,11 +162,11 @@ export const sendVerifyOtp = async (req, res) => {
     };
 
     try {
-        await transporter.sendMail(mailOption);
+      await transporter.sendMail(mailOption);
     } catch (emailError) {
-        console.error("Email sending failed:", emailError);
+      console.error("Email sending failed:", emailError);
     }
-    
+
     return res.status(200).json({ success: true, message: 'Verification OTP sent to email' });
   } catch (error) {
     console.error("Send verification OTP error:", error);
@@ -169,7 +175,7 @@ export const sendVerifyOtp = async (req, res) => {
 };
 
 export const verifyEmail = async (req, res) => {
-    const userId = req.user?._id;
+    const userId = req.user?.id;
     const { otp } = req.body;
 
     if (!userId || !otp) {
