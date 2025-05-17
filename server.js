@@ -17,7 +17,7 @@ const allowedOrigins = ['https://sievent-frontend.vercel.app']
 
 app.use(express.json())
 app.use(cookieParser())
-app.use(cors({origin: "https://sievent-frontend.vercel.app/", credentials: true}))
+app.use(cors({origin: allowedOrigins, credentials: true}))
 
 // API ENDPOINT
 app.get('/', (req, res)=> res.send("API Works"))
