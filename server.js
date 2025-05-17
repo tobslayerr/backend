@@ -13,7 +13,7 @@ const app = express()
 const port = process.env.PORT || 4000
 connectDB()
 
-const allowedOrigins = ['http://localhost:5174']
+const allowedOrigins = ['https://sievent-frontend.vercel.app/']
 
 app.use(express.json())
 app.use(cookieParser())
