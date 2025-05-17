@@ -25,8 +25,7 @@ export const register = async (req, res)=> {
         await user.save()
 
         const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, { expiresIn: '7d'})
-
-        // Konfigurasi cookie yang benar untuk Vercel
+        
         res.cookie('token', token, { 
             httpOnly: true,
             secure: true,
@@ -36,7 +35,6 @@ export const register = async (req, res)=> {
            
         })
         
-        // Sending email
         const mailOptions = {
             from: process.env.SENDER_EMAIL,
             to: email,
@@ -44,18 +42,15 @@ export const register = async (req, res)=> {
             text: `Welcome to sievent website. your account has been created with email id: ${email}`
         }
         
-        // Try-catch untuk handling error pada pengiriman email
         try {
             await transporter.sendMail(mailOptions)
         } catch (emailError) {
             console.error("Email sending failed:", emailError);
-            // Lanjutkan eksekusi walaupun email gagal terkirim
         }
-     
-        // Tambahkan token dalam response sebagai fallback
+
         return res.status(201).json({
             success: true, 
-            token: token, // Token sebagai fallback jika cookie bermasalah
+            token: token, 
             user: {
                 _id: user._id,
                 name: user.name,
@@ -92,19 +87,17 @@ export const login = async (req, res)=> {
         
         const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, { expiresIn: '7d'})
 
-        // Konfigurasi cookie yang benar untuk Vercel
         res.cookie('token', token, { 
             httpOnly: true,
             secure: true,
-            sameSite: 'none', // Perubahan dari 'strict' ke 'lax'/'none'
+            sameSite: 'none', 
             path: '/',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 hari dalam milidetik
+            maxAge: 7 * 24 * 60 * 60 * 1000
         })
 
-        // Tambahkan token dalam response sebagai fallback
         return res.status(200).json({
             success: true,
-            token: token, // Token sebagai fallback jika cookie bermasalah
+            token: token, 
             user: {
                 _id: user._id,
                 name: user.name,
@@ -124,8 +117,8 @@ export const logout = async (req, res)=> {
         res.clearCookie('token', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Perubahan dari 'strict' ke 'lax'/'none'
-            path: '/' // Penting untuk memastikan cookie dihapus dengan benar
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', 
+            path: '/' 
         })
 
         return res.status(200).json({success: true, message: "Logged Out"})
@@ -144,7 +137,7 @@ export const sendVerifyOtp = async (req, res) => {
   }
 
   try {
-    const user = req.user; // ✅ user sudah ada dari middleware
+    const user = req.user; 
 
     if (user.isAccountVerified) {
       return res.status(400).json({ success: false, message: "Account already verified" });
@@ -162,12 +155,10 @@ export const sendVerifyOtp = async (req, res) => {
       html: EMAIL_VERIFY_TEMPLATE.replace("{{otp}}", otp).replace("{{email}}", user.email)
     };
 
-    // Try-catch untuk handling error pada pengiriman email
     try {
         await transporter.sendMail(mailOption);
     } catch (emailError) {
         console.error("Email sending failed:", emailError);
-        // Lanjutkan eksekusi walaupun email gagal terkirim
     }
     
     return res.status(200).json({ success: true, message: 'Verification OTP sent to email' });
@@ -209,19 +200,16 @@ export const verifyEmail = async (req, res) => {
     }
 };
 
-// CHECK IF USER IS AUTHENTICATED 
 export const isAuthenticated = async (req, res, next) => {
   try {
-    // Logging untuk debug
     console.log("Cookies:", req.cookies);
     console.log("Authorization header:", req.headers.authorization);
     
-    // Periksa token dari berbagai sumber
     const token = 
       req.cookies?.token || 
       req.headers.authorization?.split(" ")[1] || 
       req.body.token || 
-      req.query.token; // Tambahkan support untuk token di query params
+      req.query.token; 
 
     console.log("Token found:", !!token);
     
@@ -232,10 +220,8 @@ export const isAuthenticated = async (req, res, next) => {
       });
     }
 
-    // Verifikasi token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Cari user dengan ID dari token
     const user = await userModel.findById(decoded.id);
     
     if (!user) {
@@ -245,10 +231,8 @@ export const isAuthenticated = async (req, res, next) => {
       });
     }
 
-    // Pasang user ke objek request
     req.user = user;
     
-    // Lanjut ke middleware berikutnya
     next();
   } catch (error) {
     console.error("Authentication error:", error.message);
@@ -274,10 +258,8 @@ export const isAuthenticated = async (req, res, next) => {
   }
 };
 
-// Route untuk cek autentikasi (is-auth)
 export const checkAuth = async (req, res) => {
   try {
-    // req.user sudah tersedia dari middleware isAuthenticated
     return res.status(200).json({
       success: true,
       user: {
@@ -297,7 +279,7 @@ export const checkAuth = async (req, res) => {
   }
 };
 
-// Send Password reset otp
+
 export const sendResetOtp = async (req, res) => {
     const {email} = req.body
 
@@ -325,12 +307,10 @@ export const sendResetOtp = async (req, res) => {
             html: PASSWORD_RESET_TEMPLATE.replace("{{otp}}", otp).replace("{{email}}", user.email)
         }
 
-        // Try-catch untuk handling error pada pengiriman email
         try {
             await transporter.sendMail(mailOption)
         } catch (emailError) {
             console.error("Email sending failed:", emailError);
-            // Lanjutkan eksekusi walaupun email gagal terkirim
         }
 
         return res.status(200).json({success: true, message: 'OTP sent to your email'})
