@@ -20,6 +20,8 @@ eventRoutes.post("/create", userAuth, siCreatorOnly, upload.single("banner"), cr
 eventRoutes.get("/showevents", getAllEvents);
 
 // --- INI ADALAH ROUTE YANG HILANG DAN PERLU DITAMBAHKAN ---
+// Route untuk mendapatkan event yang dibuat oleh creator yang sedang login
+eventRoutes.get("/myevents", userAuth, siCreatorOnly, getMyEvents);
 // Route untuk mendapatkan detail satu event berdasarkan ID
 eventRoutes.get("/:id", getEventById);
 // -----------------------------------------------------------
@@ -31,7 +33,6 @@ eventRoutes.patch("/updateevent/:id", userAuth, upload.single("banner"), updateE
 eventRoutes.delete("/deleteevent/:id", userAuth, deleteEvent); // Opsional: tambahkan siCreatorOnly jika hanya creator yang bisa menghapus
 // Note: Di controller deleteEvent, Anda sudah menambahkan otorisasi creator, jadi ini sudah aman.
 
-// Route untuk mendapatkan event yang dibuat oleh creator yang sedang login
-eventRoutes.get("/myevents", userAuth, siCreatorOnly, getMyEvents);
+
 
 export default eventRoutes;
