@@ -68,54 +68,70 @@ export const register = async (req, res)=> {
     }
 }
 
-export const login = async (req, res)=> {
-    const {email, password} = req.body
+export const login = async (req, res) => {
+  const { email, password } = req.body;
 
-    if(!email || !password) {
-        return res.status(400).json({success: false, message: 'Email and password are required'})
+  // Validasi input
+  if (!email || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Email dan password wajib diisi.",
+    });
+  }
+
+  try {
+    const user = await userModel.findOne({ email });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Email atau password salah.",
+      });
     }
 
-    try {
-        const user = await userModel.findOne({email})
+    const isMatch = await bcrypt.compare(password, user.password);
 
-        if (!user) {
-            return res.status(401).json({success: false, message: 'Invalid email or password'})
-        } 
-
-        const isMatch = await bcrypt.compare(password, user.password)
-
-        if (!isMatch) {
-            return res.status(401).json({success: false, message: 'Invalid email or password'})
-        }
-        
-        const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, { expiresIn: '7d'})
-
-        // Konfigurasi cookie yang benar untuk Vercel
-        res.cookie('token', token, { 
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Perubahan dari 'strict' ke 'lax'/'none'
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari dalam milidetik
-            path: '/'
-        })
-
-        // Tambahkan token dalam response sebagai fallback
-        return res.status(200).json({
-            success: true,
-            token: token, // Token sebagai fallback jika cookie bermasalah
-            user: {
-                _id: user._id,
-                name: user.name,
-                email: user.email,
-                isAccountVerified: user.isAccountVerified
-            }
-        })
-
-    } catch (error) {
-        console.error("Login error:", error);
-        return res.status(500).json({success: false, message: error.message})
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Email atau password salah.",
+      });
     }
-}
+
+    // Generate JWT
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // Set cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // true di Vercel
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
+      path: "/",
+    });
+
+    // Respon sukses
+    return res.status(200).json({
+      success: true,
+      token, // fallback jika frontend tidak menerima cookie
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isAccountVerified: user.isAccountVerified,
+        isSiCreator: user.isSiCreator || false,
+      },
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan server saat login.",
+    });
+  }
+};
 
 export const logout = async (req, res)=> {
     try {
