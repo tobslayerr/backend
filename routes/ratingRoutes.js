@@ -1,5 +1,5 @@
 import express from 'express';
-import { createRating, getRatingsForEvent, getUserRatingForEvent, getRatingById, updateRating, deleteRating} from '../controllers/ratingController.js';
+import { createRating, getRatingsForEvent, getUserRatingForEvent, getRatingById, updateRating, deleteRating, getAverageRatingForEvent} from '../controllers/ratingController.js';
 import userAuth from '../middleware/userAuth.js';
 
 const RatingRouter = express.Router();
@@ -10,5 +10,7 @@ RatingRouter.get('/readone/user/:userId/event/:eventId', userAuth, getUserRating
 RatingRouter.get('/readbyidrate/:ratingId', userAuth, getRatingById); 
 RatingRouter.patch('/update/:id', userAuth, updateRating); 
 RatingRouter.delete('/delete/:id', userAuth, deleteRating); 
+RatingRouter.get('/readaverage/:eventId', userAuth, getAverageRatingForEvent);
 
 export default RatingRouter;
+
