@@ -36,7 +36,7 @@ const ticketSchema = new mongoose.Schema({
   }, // Total price for this line item (price * quantity)
   status: {
     type: String,
-    enum: ["pending", "paid", "cancelled"],
+    enum: ["pending", "paid", "cancelled", "Used"],
     default: "pending"
   },
   // --- UPDATED: Reference the new Payment model directly ---
