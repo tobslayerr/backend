@@ -12,6 +12,8 @@ import ReportRouter from './routes/reportRoutes.js'
 import errorHandler from './middleware/errorMiddleware.js'
 import TicketRouter from './routes/ticketRoutes.js'
 import PaymentRouter from './routes/paymentRoutes.js'
+import qrRouter from './routes/qrRoutes.js'
+import RatingRouter from './routes/ratingRoutes.js'
 
 const app = express()
 const port = process.env.PORT || 4000
@@ -54,6 +56,8 @@ app.use('/api/event', eventRoutes)
 app.use('/api/ticket', TicketRouter)
 app.use('/api/report', ReportRouter)
 app.use('/api/payment', PaymentRouter)
+app.use("/api/rating", RatingRouter)
+app.use("/api/qr", qrRouter)
 
 // Global Error Handler
 app.use(errorHandler)
