@@ -3,55 +3,55 @@ import Event from '../models/eventModel.js';
 import mongoose from 'mongoose';
 
 export const createRating = async (req, res) => {
-  const { user, stars, review } = req.body;
+  const { stars, review } = req.body;
   const { eventId } = req.params;
 
-   try {
-
-    const userId = new mongoose.Types.ObjectId(user);
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const eventIdObj = new mongoose.Types.ObjectId(eventId);
 
-    // Cek apakah user sudah punya rating untuk event ini
-    const existingRating = await Rating.findOne({
-      user: userId,
-      event: eventIdObj
-    });
+    // Validasi input
+    if (!stars || stars < 1 || stars > 5) {
+      return res.status(400).json({ success: false, message: "Nilai bintang harus antara 1 hingga 1 hingga 5." });
+    }
+    if (!review || review.trim() === "") {
+      return res.status(400).json({ success: false, message: "Review tidak boleh kosong." });
+    }
 
-    if (existingRating && existingRating.status === 'rated') {
+    // Cek apakah sudah pernah memberi rating
+    const existingRating = await Rating.findOne({ user: userId, event: eventIdObj });
+    if (existingRating) {
       return res.status(400).json({
         success: false,
-        message: 'User ini sudah memberi rating untuk event ini'
+        message: 'Anda sudah memberi rating untuk event ini.',
       });
     }
 
-    if (!existingRating) {
-      const newRating = await Rating.create({
-        user: userId,
-        event: eventIdObj,
-        stars,
-        review,
-        status: 'rated' 
-      });
+    // Simpan rating baru
+    const newRating = await Rating.create({
+      user: userId,
+      event: eventIdObj,
+      stars,
+      review,
+    });
 
-      // Update ratings array di Event
-      await Event.findByIdAndUpdate(eventIdObj, {
-        $push: { ratings: newRating._id }
-      });
+    // Tambahkan ke array ratings di Event
+    await Event.findByIdAndUpdate(eventIdObj, {
+      $push: { ratings: newRating._id },
+    });
 
-      return res.status(201).json({ success: true, data: newRating });
+    // *** Coba perbarui rata‐rata rating, tapi tangkap error-nya ***
+    try {
+      await updateEventAverageRating(eventIdObj);
+    } catch (avgError) {
+      console.error("Error menghitung rata‐rata rating:", avgError);
+      // Tidak me‐throw ulang agar proses createRating tetap dianggap sukses.
     }
 
-    // Jika rating sudah ada tapi status 'unrated', update saja
-    existingRating.stars = stars;
-    existingRating.review = review;
-    existingRating.status = 'rated';
-    await existingRating.save();
-
-    res.status(200).json({ success: true, data: existingRating });
-
+    return res.status(201).json({ success: true, data: newRating });
   } catch (error) {
-    console.error("Error:", error.message);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Error createRating:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -160,6 +160,8 @@ export const updateRating = async (req, res) => {
     if (review !== undefined) rating.review = review;
 
     await rating.save();
+    
+    await updateEventAverageRating(rating.event);
 
     res.status(200).json({ success: true, message: 'Rating updated', rating });
 
@@ -188,6 +190,8 @@ export const deleteRating = async (req, res) => {
     await Event.findByIdAndUpdate(rating.event, {
       $pull: { ratings: id }
     });
+    
+    await updateEventAverageRating(rating.event);
 
     res.status(200).json({ success: true, message: 'Rating deleted' });
 
@@ -195,3 +199,39 @@ export const deleteRating = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Get Average Rating for an Event
+export const getAverageRatingForEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // Cari semua rating untuk event ini
+    const ratings = await Rating.find({ event: eventId });
+
+    if (ratings.length === 0) {
+      return res.status(200).json({
+        success: true,
+        averageRating: 0,
+        totalRatings: 0
+      });
+    }
+
+    // Hitung rata-rata
+    const totalStars = ratings.reduce((sum, r) => sum + r.stars, 0);
+    const averageRating = totalStars / ratings.length;
+
+    return res.status(200).json({
+      success: true,
+      averageRating: averageRating.toFixed(2), 
+      totalRatings: ratings.length
+    });
+
+  } catch (error) {
+    console.error('Gagal menghitung rata-rata rating:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal menghitung rata-rata rating'
+    });
+  }
+}; 
+
