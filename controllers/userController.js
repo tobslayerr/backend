@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import userModel from "../models/userModel.js";
+import asyncHandler from 'express-async-handler';
+import Ticket from '../models/ticketModel.js';
 
 export const getUserData = async (req, res) => {
   try {
@@ -93,3 +95,28 @@ export const rejectSiCreator = async (req, res) => {
         res.status(500).json({ message: "Server error", error: err.message });
     }
 };
+
+export const getUserTickets = asyncHandler(async (req, res) => {
+    const userId = req.user.id; // ID pengguna dari middleware userAuth
+
+    const tickets = await Ticket.find({ user: userId })
+        .populate('event', 'name') // Mengambil nama event dari model Event
+        // .populate('payment', 'transaction_status gross_amount') // Opsional: jika butuh detail pembayaran
+        .sort({ createdAt: -1 }); // Urutkan berdasarkan waktu pembelian terbaru
+
+    // Jika Anda ingin menampilkan nama jenis tiket (misal "VIP", "Reguler")
+    // Anda perlu memastikan Event model Anda memiliki nama untuk setiap eventTicketType
+    // dan kemudian mengambilnya di sini.
+    // Atau, seperti yang sudah kita masukkan di paymentTicketDetailSchema dan ticketModel,
+    // field `ticketTypeName` bisa disimpan langsung di Ticket model saat pembelian.
+    // Contoh, jika di Ticket model Anda ada `ticketTypeName`:
+    // const ticketsWithTypeName = tickets.map(ticket => ({
+    //     ...ticket.toObject(),
+    //     ticketTypeName: ticket.eventTicketType.name // Jika eventTicketType dipopulate atau ada field name
+    // }));
+
+    res.status(200).json({
+        success: true,
+        tickets: tickets // Atau ticketsWithTypeName jika Anda memprosesnya
+    });
+});

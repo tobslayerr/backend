@@ -20,12 +20,13 @@ const parseAndValidateTickets = (ticketsString) => {
         }
 
         // Konversi isFree dari string FormData ke boolean
+        // FormData mengirim boolean sebagai string "true" atau "false"
         ticket.isFree = (ticket.isFree === 'true' || ticket.isFree === true);
 
         // Jika tidak gratis, harga harus valid dan lebih dari 0
         if (!ticket.isFree) {
           ticket.price = Number(ticket.price);
-          if (isNaN(ticket.price) || ticket.price <= 0) {
+          if (isNaN(ticket.price) || ticket.price < 0) { // Harga bisa 0 jika eventCreator mau setting 0
             throw new Error(`Harga tiket "${ticket.name}" tidak valid.`);
           }
         } else {
@@ -45,12 +46,19 @@ const parseAndValidateTickets = (ticketsString) => {
 // Create Event
 export const createEvent = async (req, res) => {
   try {
-    const { name, type, date, location, description, tickets: ticketsString } = req.body;
+    // --- TANGKAP LATITUDE DAN LONGITUDE DARI REQ.BODY ---
+    const { name, type, date, location, description, latitude, longitude, tickets: ticketsString } = req.body;
     const creatorId = req.user.id; // Pastikan req.user.id tersedia (dari middleware auth Anda)
 
     if (!req.file) {
       return res.status(400).json({ success: false, message: "Banner image is required" });
     }
+
+    // --- VALIDASI LATITUDE DAN LONGITUDE ---
+    if (!latitude || !longitude || isNaN(parseFloat(latitude)) || isNaN(parseFloat(longitude))) {
+      return res.status(400).json({ success: false, message: "Latitude and longitude are required and must be valid numbers." });
+    }
+    // --- END VALIDASI LATITUDE DAN LONGITUDE ---
 
     // Upload banner ke Cloudinary
     const result = await new Promise((resolve, reject) => {
@@ -75,13 +83,15 @@ export const createEvent = async (req, res) => {
       bannerUrl: result.secure_url,
       creator: creatorId,
       tickets, // Simpan array tiket yang sudah di-parse
-      // isFree dan price level event tidak lagi dibutuhkan karena di handle oleh tickets
+      latitude: parseFloat(latitude),   // --- SIMPAN LATITUDE ---
+      longitude: parseFloat(longitude),  // --- SIMPAN LONGITUDE ---
     });
 
     await event.save();
 
     res.status(201).json({ success: true, event });
   } catch (error) {
+    console.error("Error creating event:", error); // Log error lebih detail
     res.status(500).json({ success: false, message: "Event creation failed", error: error.message });
   }
 };
@@ -96,6 +106,7 @@ export const getAllEvents = async (req, res) => {
 
     res.status(200).json({ success: true, events });
   } catch (error) {
+    console.error("Error fetching all events:", error);
     res.status(500).json({ success: false, message: "Failed to fetch events", error: error.message });
   }
 };
@@ -113,6 +124,7 @@ export const getEventById = async (req, res) => {
 
     res.status(200).json({ success: true, event });
   } catch (error) {
+    console.error("Error fetching event by ID:", error);
     res.status(500).json({ success: false, message: "Failed to fetch event", error: error.message });
   }
 };
@@ -126,6 +138,7 @@ export const getMyEvents = async (req, res) => {
 
     res.status(200).json({ success: true, events });
   } catch (error) {
+    console.error("Error fetching my events:", error);
     res.status(500).json({ success: false, message: "Failed to fetch your events", error: error.message });
   }
 };
@@ -134,7 +147,8 @@ export const getMyEvents = async (req, res) => {
 export const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, type, date, location, description, tickets: ticketsString } = req.body;
+    // --- TANGKAP LATITUDE DAN LONGITUDE DARI REQ.BODY ---
+    const { name, type, date, location, description, latitude, longitude, tickets: ticketsString } = req.body;
     const event = await Event.findById(id);
 
     if (!event) {
@@ -152,6 +166,16 @@ export const updateEvent = async (req, res) => {
     event.date = date || event.date;
     event.location = location || event.location;
     event.description = description || event.description;
+    
+    // --- UPDATE LATITUDE DAN LONGITUDE ---
+    // Pastikan latitude dan longitude dari request tidak null/undefined sebelum update
+    if (latitude !== undefined && latitude !== null) {
+      event.latitude = parseFloat(latitude);
+    }
+    if (longitude !== undefined && longitude !== null) {
+      event.longitude = parseFloat(longitude);
+    }
+    // --- END UPDATE LATITUDE DAN LONGITUDE ---
 
     // --- KUNCI SOLUSI UNTUK TIKET DI UPDATE: PARSE STRING JSON DAN GANTI ARRAY TIKET ---
     if (ticketsString) {
@@ -160,20 +184,18 @@ export const updateEvent = async (req, res) => {
         } catch (error) {
             return res.status(400).json({ success: false, message: error.message });
         }
-    } else {
-      // Jika ticketsString tidak ada (misal, user tidak mengubah tiket),
-      // Anda bisa memilih untuk tidak melakukan apa-apa atau mengosongkan jika ada permintaan khusus.
-      // Untuk tujuan edit, kita asumsikan jika tidak dikirim, berarti tidak ada perubahan pada tiket,
-      // atau jika dikirim kosong, maka tiket dihapus.
-      // Paling aman: jangan sentuh event.tickets jika ticketsString kosong atau tidak ada.
-      // Namun, jika frontend selalu mengirim `tickets` array (walaupun kosong), maka baris di atas sudah cukup.
-    }
+    } 
+    // Jika ticketsString tidak ada (misal, user tidak mengubah tiket),
+    // kita tidak perlu melakukan apa-apa karena event.tickets akan tetap pada nilai sebelumnya.
+    // Jika ingin mengosongkan tiket saat ticketsString tidak ada, tambahkan `else { event.tickets = []; }`
+    // Namun, asumsi kita adalah frontend selalu mengirim array tickets (walaupun kosong jika dihapus semua).
     // --- END KUNCI SOLUSI ---
 
     // Handle isFree and price removed, as they are now per ticket type
 
     // Update banner if new file is uploaded
     if (req.file) {
+      // TODO: Anda mungkin ingin menghapus banner lama dari Cloudinary di sini
       const result = await new Promise((resolve, reject) => {
         cloudinary.v2.uploader.upload_stream(
           { folder: "sievent/events" },
@@ -190,6 +212,7 @@ export const updateEvent = async (req, res) => {
 
     res.status(200).json({ success: true, event });
   } catch (error) {
+    console.error("Error updating event:", error);
     res.status(500).json({ success: false, message: "Failed to update event", error: error.message });
   }
 };
@@ -209,10 +232,24 @@ export const deleteEvent = async (req, res) => {
         return res.status(403).json({ success: false, message: "Not authorized to delete this event" });
     }
 
+    // --- Opsional: Hapus banner dari Cloudinary saat menghapus event ---
+    if (event.bannerUrl) {
+      const publicId = event.bannerUrl.split('/').pop().split('.')[0];
+      try {
+        await cloudinary.v2.uploader.destroy(`sievent/events/${publicId}`);
+        console.log(`Banner ${publicId} deleted from Cloudinary.`);
+      } catch (cloudinaryError) {
+        console.error("Error deleting banner from Cloudinary:", cloudinaryError);
+        // Lanjutkan penghapusan event meskipun penghapusan banner gagal
+      }
+    }
+    // --- End Opsional ---
+
     await Event.findByIdAndDelete(id);
 
     res.status(200).json({ success: true, message: "Event deleted successfully" });
   } catch (error) {
+    console.error("Error deleting event:", error);
     res.status(500).json({ success: false, message: "Failed to delete event", error: error.message });
   }
 };

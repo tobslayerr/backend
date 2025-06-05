@@ -176,91 +176,122 @@ export const createTransaction = asyncHandler(async (req, res) => {
 
 
 // Fungsi untuk menangani notifikasi (callback) dari Midtrans
+// Fungsi untuk menangani notifikasi (callback) dari Midtrans
 export const handleMidtransNotification = asyncHandler(async (req, res) => {
-  const notification = req.body;
+    const notification = req.body;
 
-  // Verifikasi notifikasi menggunakan coreApi (lebih aman)
-  // Ini penting untuk keamanan!
-  const serverKey = process.env.MIDTRANS_SERVER_KEY;
-  const signatureKey = coreApi.transactions.notification.createSignatureKey(
-    notification.order_id,
-    notification.status_code, // Gunakan status_code dari notifikasi
-    notification.gross_amount,
-    serverKey
-  );
+    // ----- PENTING: Gunakan snap.transaction.notification() untuk verifikasi dan parsing -----
+    let transactionStatusResponse;
+    try {
+        transactionStatusResponse = await snap.transaction.notification(notification);
+    } catch (error) {
+        console.error("Error verifying Midtrans notification:", error.message);
+        // Penting: Kirim status 401 atau 500 agar Midtrans retry jika verifikasi gagal
+        return res.status(401).json({ success: false, message: 'Notification verification failed.' });
+    }
 
-  if (signatureKey !== notification.signature_key) {
-    console.warn('Invalid signature key received from Midtrans for order:', notification.order_id);
-    return res.status(401).json({ message: 'Invalid signature key' });
-  }
+    const orderId = transactionStatusResponse.order_id;
+    const transactionStatus = transactionStatusResponse.transaction_status;
+    const fraudStatus = transactionStatusResponse.fraud_status;
+    const grossAmount = transactionStatusResponse.gross_amount; // Gunakan gross_amount dari response yang terverifikasi
 
-  // Temukan pembayaran yang sesuai di database Anda
-  const payment = await Payment.findOne({ order_id: notification.order_id });
+    console.log(`[Midtrans Notification] Order ID: ${orderId}, Status: ${transactionStatus}, Fraud: ${fraudStatus}`);
 
-  if (!payment) {
-    console.warn('Payment not found for order_id:', notification.order_id);
-    return res.status(404).json({ message: 'Payment not found' });
-  }
+    // Temukan pembayaran yang sesuai di database Anda
+    // Gunakan orderId dari response Midtrans yang terverifikasi
+    const payment = await Payment.findOne({ order_id: orderId });
 
-  // Perbarui status transaksi berdasarkan notifikasi dari Midtrans
-  payment.transaction_status = notification.transaction_status;
-  payment.raw_midtrans_response = notification; // Simpan seluruh payload notifikasi
-  payment.transaction_time = notification.transaction_time;
-  payment.payment_type = notification.payment_type;
-  payment.fraud_status = notification.fraud_status;
+    if (!payment) {
+        console.warn(`[Midtrans Notification] Payment record not found for order_id: ${orderId}`);
+        // Jika tidak ditemukan, kemungkinan notifikasi duplikat atau order_id tidak valid
+        return res.status(404).json({ success: false, message: 'Payment record not found.' });
+    }
 
-  let message = 'Notification processed.';
+    // Hindari pemrosesan berulang untuk status yang sudah final
+    if (payment.transaction_status === 'settlement' || payment.transaction_status === 'capture') {
+        console.log(`[Midtrans Notification] Order ID: ${orderId} already settled/captured. Skipping update.`);
+        return res.status(200).json({ success: true, message: 'Transaction already processed.' });
+    }
 
-  switch (notification.transaction_status) {
-    case 'capture': // Untuk kartu kredit
-    case 'settlement': // Untuk metode pembayaran lain (VA, e-wallet)
-      // Pembayaran berhasil
-      payment.isPaid = true;
 
-      // Perbarui status tiket yang terkait dengan pembayaran ini menjadi 'paid'
-      await Ticket.updateMany(
-        { payment: payment._id, status: 'pending' },
-        { $set: { status: 'paid' } }
-      );
+    // Perbarui status transaksi berdasarkan notifikasi dari Midtrans
+    payment.transaction_status = transactionStatus;
+    payment.raw_midtrans_response = notification; // Simpan seluruh payload notifikasi asli
+    payment.transaction_time = transactionStatusResponse.transaction_time; // Ambil dari response yang terverifikasi
+    payment.payment_type = transactionStatusResponse.payment_type;
+    payment.fraud_status = fraudStatus;
 
-      // Kurangi kuantitas tiket yang tersedia di Event model
-      const event = await Event.findById(payment.event);
-      if (event) {
-        for (const purchasedTicket of payment.tickets) {
-          const eventTicketType = event.tickets.id(purchasedTicket.ticketTypeId);
-          if (eventTicketType) {
-            // Pastikan quantity tidak menjadi negatif
-            eventTicketType.quantity = Math.max(0, eventTicketType.quantity - purchasedTicket.quantity);
-          }
-        }
-        await event.save();
-      }
-      message = 'Payment successful!';
-      break;
-    case 'pending':
-      // Pembayaran masih tertunda
-      message = 'Payment pending.';
-      break;
-    case 'deny':
-    case 'cancel':
-    case 'expire':
-      // Pembayaran dibatalkan atau kadaluarsa
-      payment.isPaid = false;
-      // Perbarui status tiket yang terkait dengan pembayaran ini menjadi 'cancelled'
-      await Ticket.updateMany(
-        { payment: payment._id, status: 'pending' },
-        { $set: { status: 'cancelled' } }
-      );
-      // Opsional: Anda mungkin ingin mengembalikan stok tiket jika dibatalkan setelah dikurangi
-      // (Ini tergantung pada kapan Anda mengurangi stok, biasanya setelah settlement)
-      message = 'Payment failed or cancelled.';
-      break;
-    default:
-      message = 'Unhandled transaction status.';
-      break;
-  }
+    let message = 'Notification processed.';
 
-  await payment.save();
+    switch (transactionStatus) {
+        case 'capture': // Untuk kartu kredit
+        case 'settlement': // Untuk metode pembayaran lain (VA, e-wallet)
+            if (fraudStatus === 'challenge') {
+                // Pembayaran ditahan untuk verifikasi manual
+                payment.isPaid = false; // Belum dianggap paid sepenuhnya
+                // Mungkin perlu status tiket 'challenged' atau sejenisnya
+                // Anda bisa tambahkan logic di sini untuk memberitahu admin
+                message = 'Payment challenged. Awaiting manual verification.';
+            } else if (fraudStatus === 'accept') {
+                // Pembayaran berhasil dan tidak ada indikasi fraud
+                payment.isPaid = true;
 
-  res.status(200).json({ success: true, message });
+                // Perbarui status tiket yang terkait dengan pembayaran ini menjadi 'paid'
+                // Pastikan `status: 'pending'` untuk menghindari update berulang
+                await Ticket.updateMany(
+                    { payment: payment._id, status: 'pending' },
+                    { $set: { status: 'paid' } }
+                );
+                console.log(`[Midtrans Notification] Tickets for payment ${payment._id} updated to 'paid'.`);
+
+                // Kurangi kuantitas tiket yang tersedia di Event model
+                const event = await Event.findById(payment.event);
+                if (event) {
+                    for (const purchasedTicket of payment.tickets) {
+                        const eventTicketType = event.tickets.id(purchasedTicket.ticketTypeId);
+                        if (eventTicketType) {
+                            eventTicketType.quantity = Math.max(0, eventTicketType.quantity - purchasedTicket.quantity);
+                        }
+                    }
+                    await event.save();
+                    console.log(`[Midtrans Notification] Event ticket quantities for event ${event._id} updated.`);
+                }
+                message = 'Payment successful!';
+            }
+            break;
+        case 'pending':
+            // Pembayaran masih tertunda
+            payment.isPaid = false;
+            // Status tiket tetap 'pending', tidak ada perubahan
+            message = 'Payment pending.';
+            break;
+        case 'deny':
+        case 'cancel':
+        case 'expire':
+            // Pembayaran dibatalkan atau kadaluarsa
+            payment.isPaid = false;
+            // Perbarui status tiket yang terkait dengan pembayaran ini menjadi 'cancelled'
+            await Ticket.updateMany(
+                { payment: payment._id, status: 'pending' }, // Hanya update yang masih pending
+                { $set: { status: 'cancelled' } }
+            );
+            console.log(`[Midtrans Notification] Tickets for payment ${payment._id} updated to 'cancelled'.`);
+
+            // PENTING: Jika Anda sudah mengurangi stok di `createTransaction`
+            // maka Anda harus mengembalikan stok di sini saat pembayaran gagal/dibatalkan.
+            // Namun, saat ini Anda mengurangi stok di `settlement`/`capture`, jadi tidak perlu mengembalikan.
+            // Jika suatu saat logika Anda berubah dan stok dikurangi di `createTransaction` (saat pending),
+            // maka Anda perlu mengembalikan stok di sini.
+
+            message = 'Payment failed or cancelled.';
+            break;
+        default:
+            message = `Unhandled transaction status: ${transactionStatus}.`;
+            break;
+    }
+
+    await payment.save();
+    console.log(`[Midtrans Notification] Payment record ${payment._id} status updated to ${payment.transaction_status}.`);
+
+    res.status(200).json({ success: true, message });
 });

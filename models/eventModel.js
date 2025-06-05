@@ -23,6 +23,9 @@ const eventSchema = new mongoose.Schema({
   type: { type: String, enum: ["online", "offline"], required: true },
   date: { type: Date, required: true },
   location: { type: String },
+  location: { type: String, required: true }, // Alamat teks
+  latitude: { type: Number, required: true }, // <-- TAMBAHKAN INI
+  longitude: { type: Number, required: true },
   description: { type: String, required: true },
   // Removed isFree and price from the main event schema
   // as pricing will now be handled by individual ticket types.
