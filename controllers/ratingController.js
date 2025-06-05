@@ -60,31 +60,12 @@ export const getRatingsForEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    // Debug: Cek eventId
-    console.log("Event ID diterima:", eventId);
+    const ratings = await Rating.find({ event: eventId })
+      .populate("user", "name"); // hanya ambil nama user
 
-    // Ambil event beserta ratings dan user name
-    const event = await Event.findById(eventId).populate({
-      path: 'ratings',
-      populate: {
-        path: 'user',
-        select: 'name'
-      }
-    });
-
-    if (!event) {
-      return res.status(404).json({ success: false, message: 'Event tidak ditemukan' });
-    }
-
-    // Kirim response
-    return res.status(200).json({
-      success: true,
-      ratings: event.ratings || []  
-    });
-
+    res.status(200).json(ratings);
   } catch (error) {
-    console.error("Error saat mengambil rating:", error.message);
-    return res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ message: "Gagal mengambil rating event", error });
   }
 };
 
