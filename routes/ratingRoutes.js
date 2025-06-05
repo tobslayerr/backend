@@ -10,7 +10,7 @@ RatingRouter.get('/readone/user/:userId/event/:eventId', userAuth, getUserRating
 RatingRouter.get('/readbyidrate/:ratingId', userAuth, getRatingById); 
 RatingRouter.patch('/update/:id', userAuth, updateRating); 
 RatingRouter.delete('/delete/:id', userAuth, deleteRating); 
-RatingRouter.get('/readaverage/:eventId', userAuth, getAverageRatingForEvent);
+RatingRouter.get('/readaverage/:eventId', getAverageRatingForEvent);
 
 export default RatingRouter;
 
