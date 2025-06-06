@@ -11,7 +11,6 @@ const ratingSchema = new mongoose.Schema({
   }, { timestamps: true });
 
 ratingSchema.index({ user: 1, event: 1 }, { unique: true });
-});
 
 export default mongoose.model("Rating", ratingSchema);
 
