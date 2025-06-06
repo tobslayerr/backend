@@ -127,7 +127,6 @@ export const updateEvent = async (req, res) => {
 };
 
 // Delete Event 
-
 export const deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
