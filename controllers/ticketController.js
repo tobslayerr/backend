@@ -1,4 +1,5 @@
 import Ticket from "../models/ticketModel.js";
+<<<<<<< HEAD
 import Event from "../models/EventModel.js";
 import User from "../models/userModel.js";
 
@@ -161,12 +162,61 @@ export const createFreeTicket = async (req, res) => {
   } catch (error) {
     console.error("Gagal membuat tiket gratis:", error);
     return res.status(500).json({ message: "Server error" });
+=======
+import Event from "../models/eventModel.js";
+
+export const createTicket = async (req, res, next) => {
+  try {
+    const { eventId, quantity, price } = req.body;
+    const userId = req.user.id;
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Event not found" 
+    });
+    }
+    
+    const total = quantity * price;
+
+if (isNaN(total)) {
+  return res.status(400).json({ 
+    success: false, 
+    message: "Invalid quantity or price" 
+  });
+}
+
+    const ticket = new Ticket({
+      event: event._id,
+      user: userId,
+      eventDate: event.date, 
+      price,
+      quantity,
+      total
+    });
+
+    await ticket.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Ticket created",
+      ticket
+    });
+  } catch (error) {
+    next(error);
+>>>>>>> a86b8eb9da78aed4e980998d93a6e82ea1589e1a
   }
 };
 
 export const getAllTickets = async (req, res, next) => {
   try {
+<<<<<<< HEAD
     const tickets = await Ticket.find()
+=======
+    const userId = req.user.id;
+    const tickets = await Ticket.find({ user: userId })
+>>>>>>> a86b8eb9da78aed4e980998d93a6e82ea1589e1a
       .populate("event", "name date location")
       .sort({ createdAt: -1 });
 
@@ -177,16 +227,26 @@ export const getAllTickets = async (req, res, next) => {
 };
 
 export const getTicketById = async (req, res) => {
+<<<<<<< HEAD
  try {
     const { id } = req.params;
     const ticket = await Ticket.findById(id).populate("event", "name");
 
     if (!ticket) {
       return res.status(404).json({ success: false, message: "Event not found" });
+=======
+  try {
+    const { id } = req.params;
+    const ticket = await Ticket.findById(id).populate("event", "name date location");
+
+    if (!ticket || ticket.user.toString() !== req.user.id) {
+      return res.status(404).json({ success: false, message: "Ticket not found" });
+>>>>>>> a86b8eb9da78aed4e980998d93a6e82ea1589e1a
     }
 
     res.status(200).json({ success: true, ticket });
   } catch (error) {
+<<<<<<< HEAD
     res.status(500).json({ success: false, message: "Failed to fetch event", error: error.message });
   }
 };
@@ -235,6 +295,44 @@ export const cancelTicket = async (req, res) => {
     });
   }
 };
+=======
+    next (error);
+  }
+};
+
+export const updateTicket = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { quantity, price } = req.body;
+
+    const ticket = await Ticket.findById(id).populate("event");
+
+    console.log('TICKET:', ticket);
+    console.log('REQUEST USER ID:', req.user.id);
+
+    if (!ticket || !ticket.user.equals(req.user.id)) {
+     return res.status(404).json({ success: false, message: "Ticket not found" });
+}
+    if (ticket.status !== "pending") {
+      return res.status(400).json({ success: false, message: "Cannot update a paid ticket" });
+    }
+
+    ticket.price = price;
+    ticket.quantity = quantity;
+    ticket.total = quantity * price;
+
+    await ticket.save();
+
+    res.status(200).json({ 
+        success: true, 
+        ticket 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+>>>>>>> a86b8eb9da78aed4e980998d93a6e82ea1589e1a
 export const deleteTicket = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -255,6 +353,10 @@ export const deleteTicket = async (req, res, next) => {
         message: "Ticket deleted" 
     });
   } catch (error) {
+<<<<<<< HEAD
     next(err0r);
+=======
+    next(error);
+>>>>>>> a86b8eb9da78aed4e980998d93a6e82ea1589e1a
   }
 };
