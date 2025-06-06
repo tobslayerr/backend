@@ -15,6 +15,8 @@ import PaymentRouter from './routes/paymentRoutes.js'
 import sentMailRouter from './routes/sentMailRoutes.js'
 import RatingRouter from './routes/ratingRoutes.js'
 import qrRouter from './routes/qrRoutes.js'
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from './swagger/swagger.js';
 
 const app = express()
 const port = process.env.PORT || 5000
@@ -25,6 +27,7 @@ const allowedOrigins = ['http://localhost:5173']
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({origin: allowedOrigins, credentials: true}));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API ENDPOINT
 app.get('/', (req, res)=> res.send("API Works"));
@@ -42,6 +45,11 @@ app.use("/api/qr", qrRouter);
 
 app.use(errorHandler);
 
-app.listen(port, ()=> console.log(`Server running on port ${port}`));
+app.listen(port, ()=> {
+        console.log(`Server running on port ${port}`);
+        console.log('Server running on http://localhost:5000');
+        console.log('Swagger UI on http://localhost:5000/api-docs');
+    }       
+);
 
 export default app;
