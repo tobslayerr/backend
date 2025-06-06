@@ -10,7 +10,7 @@ const options = {
       version: '1.0.0',
       description: 'Dokumentasi REST API untuk platform pembelian tiket event',
     },
-    servers: [{ url: 'http://localhost:5000', description: 'Local server' }],
+    servers: [{ url: process.env.NEXT_PUBLIC_APP_URL , description: 'vercel' }],
     components: {
       securitySchemes: {
         bearerAuth: {
