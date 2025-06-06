@@ -16,7 +16,7 @@ import sentMailRouter from './routes/sentMailRoutes.js'
 import RatingRouter from './routes/ratingRoutes.js'
 import qrRouter from './routes/qrRoutes.js'
 import swaggerUi from 'swagger-ui-express';
-import swaggerSpec from './swagger.js'
+import swaggerSpec from './Swagger/swagger.js'
 
 const app = express()
 const port = process.env.PORT || 5000
@@ -47,7 +47,7 @@ app.use(errorHandler);
 
 app.listen(port, ()=> {
         console.log(`Server running on port ${port}`);
-        console.log('Swagger UI on http://localhost:5000/api-docs');
+        console.log('Swagger UI hosted with Vercel');
     }       
 );
 
