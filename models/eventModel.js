@@ -1,21 +1,18 @@
 import mongoose from "mongoose";
 
-const ratingSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "user", required: true },
-  stars: { type: Number, required: true, min: 1, max: 5 },
-  review: { type: String, default: "" }
-});
-
 const eventSchema = new mongoose.Schema({
   name: { type: String, required: true },
   bannerUrl: { type: String, required: true },
   creator: { type: mongoose.Schema.Types.ObjectId, ref: "user", required: true }, 
-  ratings: [ratingSchema],
+  ratings: [{ type: mongoose.Schema.Types.ObjectId, ref: "Rating"}],
+  price: { type: Number, required: true, min: 0,},
+  description : {type : String},
+  ticketAvailable: { type: Number, required: true, min: 0, default: 0},
   type: { type: String, enum: ["online", "offline"], required: true },
-  price: { type: Number, default: 0 },
-  isFree: { type: Boolean, default: false },
   date: { type: Date, required: true },
   location: { type: String },
+  latitude: { type: Number, required: true }, 
+  longitude: { type: Number, required: true },
 }, {
   timestamps: true,
 });

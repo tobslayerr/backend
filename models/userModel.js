@@ -13,6 +13,6 @@ const userSchema = new mongoose.Schema({
   siCreatorRequest: { type: Boolean, default: false },
 });
 
-const userModel = mongoose.models.user || mongoose.model('user', userSchema);
+const userModel = mongoose.models.user || mongoose.model('User', userSchema);
 
 export default userModel;
