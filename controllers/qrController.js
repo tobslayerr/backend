@@ -87,3 +87,4 @@ export const verifyQrScan = async (req, res) => {
       error: err.message,
     });
   }
+};
