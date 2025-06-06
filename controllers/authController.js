@@ -126,6 +126,10 @@ export const login = async (req, res) => {
     });
   }
 };
+<<<<<<< HEAD
+=======
+
+>>>>>>> a9cc18d48bbb71f51614beeea93ddf01b99300a3
 
 export const logout = async (req, res)=> {
     try {
