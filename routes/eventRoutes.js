@@ -1,5 +1,4 @@
 import express from "express";
-<<<<<<< HEAD
 import { createEvent, deleteEvent, getAllEvents, getMyEvents, getEventById, updateEvent } from "../controllers/eventController.js";
 import userAuth from "../middleware/userAuth.js";
 import siCreatorOnly from "../middleware/siCreatorOnly.js";
