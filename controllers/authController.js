@@ -48,7 +48,6 @@ export const register = async (req, res)=> {
         } catch (emailError) {
             console.error("Email sending failed:", emailError);
             // Lanjutkan eksekusi walaupun email gagal terkirim
-<<<<<<< HEAD
         }
      
         // Tambahkan token dalam response sebagai fallback
@@ -114,7 +113,7 @@ export const login = async (req, res)=> {
 
     } catch (error) {
         console.error("Login error:", error);
-=======
+
         }
      
         // Tambahkan token dalam response sebagai fallback
