@@ -100,4 +100,3 @@ app.use(errorHandler)
 app.listen(port, () => console.log(`Server running on port ${port}`))
 
 export default app
->>>>>>> a86b8eb9da78aed4e980998d93a6e82ea1589e1a
