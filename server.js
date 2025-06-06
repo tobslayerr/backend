@@ -6,20 +6,15 @@ import connectDB from './config/mongodb.js'
 import authRouter from './routes/authRoutes.js'
 import userRouter from './routes/userRoutes.js'
 import webRouter from './routes/webRoutes.js'
-<<<<<<< HEAD
 import adminRoutes from "./routes/adminRoutes.js"
 import eventRoutes from "./routes/eventRoutes.js";
-=======
-import adminRoutes from './routes/adminRoutes.js'
-import eventRoutes from './routes/eventRoutes.js'
->>>>>>> a86b8eb9da78aed4e980998d93a6e82ea1589e1a
 import ReportRouter from './routes/reportRoutes.js'
 import errorHandler from './middleware/errorMiddleware.js'
 import TicketRouter from './routes/ticketRoutes.js'
 import PaymentRouter from './routes/paymentRoutes.js'
-<<<<<<< HEAD
 import sentMailRouter from './routes/sentMailRoutes.js'
 import RatingRouter from './routes/ratingRoutes.js'
+import qrRouter from './routes/qrRoutes.js'
 
 const app = express()
 const port = process.env.PORT || 5000
@@ -43,6 +38,7 @@ app.use("/api/report", ReportRouter);
 app.use("/api/payment", PaymentRouter);
 app.use("/api/rating", RatingRouter);
 app.use("/api/mail", sentMailRouter);
+app.use("/api/qr", qrRouter);
 
 app.use(errorHandler);
 
