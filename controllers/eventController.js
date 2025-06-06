@@ -36,10 +36,13 @@ const result = await new Promise((resolve, reject) => {
       type,
       date,
       location,
+      description,
       bannerUrl: result.secure_url,
       creator: creatorId,
       price: parseFloat(price),
       ticketAvailable: parseInt(ticketAvailable, 10),
+      longitude: parseFloat(longitude),
+      latitude: parseFloat(latitude),
     });
 
     await event.save();
