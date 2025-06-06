@@ -21,7 +21,35 @@ export const createEvent = async (req, res) => {
         message: "Harga dan Jumlah tiket tidak boleh negatif",
       });
     }
+const result = await new Promise((resolve, reject) => {
+      cloudinary.v2.uploader.upload_stream(
+        { folder: "sievent/events" },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      ).end(req.file.buffer); 
+    });
 
+    const event = new Event({
+      name,
+      type,
+      date,
+      location,
+      bannerUrl: result.secure_url,
+      creator: creatorId,
+      price: parseFloat(price),
+      ticketAvailable: parseInt(ticketAvailable, 10),
+    });
+
+    await event.save();
+
+    res.status(201).json({ success: true, event });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Event creation failed", error: error.message });
+  }
+};
+    
 // Get All Events
 export const getAllEvents = async (req, res) => {
   try {
